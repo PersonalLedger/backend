@@ -52,3 +52,19 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Visual Studio Cache & State
+.vs/
+[Ss]lnx.sqlite
+[Vv][Ss]WorkspaceState.json
+*.vsdx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Workspace & Layout
+.idea/
+*.swp
+*.bak
+[Dd]ocument[Ll]ayout.json
