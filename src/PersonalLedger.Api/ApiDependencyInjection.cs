@@ -89,7 +89,10 @@ namespace PersonalLedger.Api
                     typeof(ApplicationDependencyInjection).Assembly,
                     typeof(InfrastructureDependencyInjection).Assembly
                 )
-                .AddClasses(publicOnly: true)
+                .AddClasses(classes => classes
+                            .Where(type => type.Name.EndsWith("Service") ||
+                                   type.Name.EndsWith("Repository") ||
+                                   type.Name.EndsWith("Handler")))
                 .AsImplementedInterfaces()
                 .WithScopedLifetime());
 
