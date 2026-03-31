@@ -1,9 +1,10 @@
-﻿using Mapster;
+using Mapster;
 using MapsterMapper;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PersonalLedger.Infrastructure.ExternalServices;
+using PersonalLedger.Infrastructure.Messaging;
 using PersonalLedger.Infrastructure.Persistence;
 using Polly;
 using Polly.Extensions.Http;
@@ -53,9 +54,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 .ConfigureHttpClient(c =>
                 {
                     c.BaseAddress = new Uri("https://api.pluggy.ai");
-                    c.DefaultRequestHeaders.Add("X-API-KEY", configuration["Pluggy:ApiKey"]);
                 })
                 .AddPolicyHandler(retryPolicy);
+
+            services.AddScoped<IPluggyService, PluggyService>();
 
             return services;
         }
@@ -85,7 +87,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         h.Password(configuration["RabbitMQ:Password"]);
                     });
 
-                    cfg.ConfigureEndpoints(context);
+                    cfg.ConfigureEndpoints(context, new CustomEndpointNameFormatter());
                     cfg.UseMessageRetry(r => r.Exponential(
                         5,
                         TimeSpan.FromSeconds(2),
