@@ -3,9 +3,11 @@ using MapsterMapper;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using PersonalLedger.Domain.Repositories;
 using PersonalLedger.Infrastructure.ExternalServices;
 using PersonalLedger.Infrastructure.Messaging;
 using PersonalLedger.Infrastructure.Persistence;
+using PersonalLedger.Infrastructure.Repositories;
 using Polly;
 using Polly.Extensions.Http;
 using Refit;
@@ -30,6 +32,9 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
                     b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+
+            services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;
         }
