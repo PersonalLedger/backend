@@ -1,15 +1,9 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using PersonalLedger.Application.Common.Interfaces;
 
 namespace PersonalLedger.Infrastructure.ExternalServices
 {
-    public interface IPluggyService
-    {
-        // Pede para o Pluggy um Token de Front-end (App Mobile)
-        Task<string> GenerateConnectTokenAsync(string? itemId = null, string? clientUserId = null);
-        Task<PluggyAccountsPageResponse> GetAccountsAsync(string? itemId = null);
-        Task<PluggyTransactionsPageResponse> GetTransactionsAsync(string accountId, DateTime? from = null, DateTime? to = null, int page = 1);
-    }
 
     public class PluggyService : IPluggyService
     {
@@ -27,6 +21,8 @@ namespace PersonalLedger.Infrastructure.ExternalServices
             _clientSecret = configuration["Pluggy:ClientSecret"] ?? throw new ArgumentNullException("Pluggy:ClientSecret was not found in configuration");
         }
 
+        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+
         private async Task<string> GetApiKeyAsync()
         {
             var cachedKey = await _cache.GetStringAsync(CacheKey);
@@ -35,18 +31,34 @@ namespace PersonalLedger.Infrastructure.ExternalServices
                 return cachedKey;
             }
 
-            // A API Key dura 2 horas. Vamos solicitar uma nova e por no Redis por 110 minutos.
-            var response = await _pluggyApi.AuthenticateAsync(new PluggyAuthRequest(_clientId, _clientSecret));
-            var newApiKey = response.apiKey;
-            
-            var options = new DistributedCacheEntryOptions
+            await _semaphore.WaitAsync();
+            try
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(110)
-            };
-            
-            await _cache.SetStringAsync(CacheKey, newApiKey, options);
+                // Double-check: Quando a thread finalmete entra no cofre, ela verifica se a thread anterior já 
+                // não foi lá e buscou o cache pra ela nos últimos milissegundos.
+                cachedKey = await _cache.GetStringAsync(CacheKey);
+                if (!string.IsNullOrEmpty(cachedKey))
+                {
+                    return cachedKey;
+                }
 
-            return newApiKey;
+                // A API Key dura 2 horas. Vamos solicitar uma nova e por no Redis por 110 minutos.
+                var response = await _pluggyApi.AuthenticateAsync(new PluggyAuthRequest(_clientId, _clientSecret));
+                var newApiKey = response.apiKey;
+                
+                var options = new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(110)
+                };
+                
+                await _cache.SetStringAsync(CacheKey, newApiKey, options);
+
+                return newApiKey;
+            }
+            finally
+            {
+                _semaphore.Release(); // Libera a catraca para o próximo
+            }
         }
 
         // Gera o token temporário para a tela do app mobile abrir o login bancário

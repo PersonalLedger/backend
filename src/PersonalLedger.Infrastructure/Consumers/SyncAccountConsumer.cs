@@ -8,7 +8,7 @@ namespace PersonalLedger.Infrastructure.Consumers
 {
     // O Trabalhador (Worker) oficial que processa a sincronização de cada banco logado.
     // Ele fica na Infraestrutura para não sujar a camada de Domínio/Aplicação com dependências do MassTransit.
-    public class SyncAccountConsumer : IConsumer<SyncAccountMessage>, IPluggyConsumer
+    public class SyncAccountConsumer : IConsumer<SyncAccountMessage>
     {
         private readonly ILogger<SyncAccountConsumer> _logger;
         private readonly IPluggyService _pluggyService;
@@ -75,6 +75,24 @@ namespace PersonalLedger.Infrastructure.Consumers
                 _logger.LogError(ex, "Erro no processamento pesado do Item {ItemId}", message.PluggyItemId);
                 throw; 
             }
+        }
+    }
+
+    // === DEFINIÇÃO DE CONFIGURAÇÃO ISOLADA DO CONSUMER ===
+    public class SyncAccountConsumerDefinition : ConsumerDefinition<SyncAccountConsumer>
+    {
+        public SyncAccountConsumerDefinition()
+        {
+            // Substitui o nome automático por um nome explícito, cravado e seguro! (Passo 4 da IA)
+            EndpointName = "critical-sync-pluggy-accounts-queue";
+        }
+
+        protected override void ConfigureConsumer(IReceiveEndpointConfigurator endpointConfigurator, 
+            IConsumerConfigurator<SyncAccountConsumer> consumerConfigurator, 
+            IRegistrationContext context)
+        {
+            // Configura o Outbox em Memória EXCLUSIVAMENTE para essa Fila Crítica! (Passo 2 da IA)
+            endpointConfigurator.UseInMemoryOutbox(context);
         }
     }
 }

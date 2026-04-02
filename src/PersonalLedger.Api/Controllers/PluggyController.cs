@@ -1,19 +1,19 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using PersonalLedger.Infrastructure.ExternalServices;
+using PersonalLedger.Application.Pluggy.Queries;
 
 namespace PersonalLedger.Api.Controllers
 {
-    // Arquitetura: Controller dedicado à integração primária do App Mobile com o Pluggy
-    // Por que: Aqui isolamos as rotas que o Frontend (celular) consome diretamente.
+
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/pluggy")]
     public class PluggyController : ControllerBase
     {
-        private readonly IPluggyService _pluggyService;
+        private readonly IMediator _mediator;
 
-        public PluggyController(IPluggyService pluggyService)
+        public PluggyController(IMediator mediator)
         {
-            _pluggyService = pluggyService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -24,19 +24,21 @@ namespace PersonalLedger.Api.Controllers
         /// Ele bate nessa rota, nossa API pega a API Key secreta e pede pro Pluggy um passe provisório (accessToken) pro celular.
         /// </remarks>
         [HttpGet("token")]
-        public async Task<IActionResult> GetConnectToken([FromQuery] string clientUserId)
+        public async Task<IActionResult> GetConnectToken(CancellationToken cancellationToken)
         {
             try
             {
-                // Chamamos o serviço orquestrador passando o "ClientUserId" (o ID do usuário do nosso banco).
-                // Isso amarra a conexão aos Webhooks futuros do Pluggy.
-                var token = await _pluggyService.GenerateConnectTokenAsync(clientUserId: clientUserId);
-                
-                return Ok(new { accessToken = token });
+                var clientUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+                if (string.IsNullOrEmpty(clientUserId))
+                    return Unauthorized();
+
+                var result = await _mediator.Send(new GetConnectTokenQuery(clientUserId), cancellationToken);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                // Todo: Implementar um Logger ou Middleware global de Exceptions seguindo o padrão da sua aplicação.
                 return StatusCode(500, new { message = "Falha ao gerar o token de conexão do Pluggy", details = ex.Message });
             }
         }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -77,7 +77,9 @@ namespace PersonalLedger.Api
         private static IServiceCollection AddHealthChecksConfig(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddHealthChecks()
-                .AddSqlServer(configuration.GetConnectionString("DefaultConnection")!, name: "SQL Server");
+                .AddSqlServer(configuration.GetConnectionString("DefaultConnection")!, name: "SQL Server")
+                .AddRedis(configuration.GetConnectionString("Redis")!, name: "StackExchange Redis")
+                .AddRabbitMQ(rabbitConnectionString: $"amqp://{configuration["RabbitMQ:Username"]}:{configuration["RabbitMQ:Password"]}@{configuration["RabbitMQ:Host"]}:5672", name: "RabbitMQ Mensageria");
 
             return services;
         }

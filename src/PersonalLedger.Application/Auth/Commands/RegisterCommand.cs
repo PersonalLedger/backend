@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
 using MediatR;
 using PersonalLedger.Application.Auth.Queries;
+using PersonalLedger.Application.Common.Interfaces;
 using PersonalLedger.Domain.Entities;
 using PersonalLedger.Domain.Repositories;
-using PersonalLedger.Domain.Services;
 
 namespace PersonalLedger.Application.Auth.Commands
 {
@@ -71,7 +71,7 @@ namespace PersonalLedger.Application.Auth.Commands
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var user = User.Create(request.Name, request.Email, request.Cpf, passwordHash);
             await _userRepository.AddAsync(user, cancellationToken);
-            var response = await _mediator.Send(new LoginQuery(user.Email, user.PasswordHash), cancellationToken);
+            var response = await _mediator.Send(new LoginQuery(request.Password, user.PasswordHash), cancellationToken);
             await _cache.SetAsync(user);
             return response;
         }

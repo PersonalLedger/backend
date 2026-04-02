@@ -54,13 +54,24 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var retryPolicy = HttpPolicyExtensions
                 .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+
+            var circuitBreakerPolicy = HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .CircuitBreakerAsync(
+                    handledEventsAllowedBeforeBreaking: 5,
+                    durationOfBreak: TimeSpan.FromSeconds(30)
+                );
+
             services.AddRefitClient<IPluggyApi>()
                 .ConfigureHttpClient(c =>
                 {
                     c.BaseAddress = new Uri("https://api.pluggy.ai");
                 })
-                .AddPolicyHandler(retryPolicy);
+                .AddPolicyHandler(retryPolicy)
+                .AddPolicyHandler(circuitBreakerPolicy);
 
             services.AddScoped<IPluggyService, PluggyService>();
 
@@ -82,7 +93,14 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             services.AddMassTransit(x =>
             {
-                x.AddConsumers(typeof(ApplicationDependencyInjection).Assembly);
+                // -- PARTE 1 DO PLANO: OUTBOX GLOBAL NO SQL SERVER --
+                x.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
+                {
+                    o.UseSqlServer();
+                    o.UseBusOutbox(); 
+                });
+
+                x.AddConsumers(typeof(InfrastructureDependencyInjection).Assembly);
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -92,12 +110,13 @@ namespace Microsoft.Extensions.DependencyInjection
                         h.Password(configuration["RabbitMQ:Password"]);
                     });
 
-                    cfg.ConfigureEndpoints(context, new CustomEndpointNameFormatter());
                     cfg.UseMessageRetry(r => r.Exponential(
                         5,
                         TimeSpan.FromSeconds(2),
                         TimeSpan.FromSeconds(30),
                         TimeSpan.FromSeconds(5)));
+
+                    cfg.ConfigureEndpoints(context, new CustomEndpointNameFormatter());
                 });
             });
 

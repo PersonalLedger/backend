@@ -35,8 +35,10 @@ namespace PersonalLedger.Application.Auth.Queries
         public async Task<AuthResult> Handle(LoginQuery request, CancellationToken cancellationToken)
         {
             var user = await _userRepository.GetFirstAsync(u => u.Email == request.Email, cancellationToken);
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+
+            if (user is null || !BCrypt.Net.BCrypt.Verify(passwordHash, user.PasswordHash))
                 throw new UnauthorizedAccessException("E-mail ou senha inválidos.");
 
             var token = _tokenService.GenerateToken(user.Id, user.Email, user.Name);
