@@ -3,6 +3,7 @@ using MapsterMapper;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using PersonalLedger.Application.Common.Interfaces;
 using PersonalLedger.Domain.Repositories;
 using PersonalLedger.Infrastructure.ExternalServices;
 using PersonalLedger.Infrastructure.Messaging;

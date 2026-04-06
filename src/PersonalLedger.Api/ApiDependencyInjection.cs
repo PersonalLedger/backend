@@ -79,7 +79,9 @@ namespace PersonalLedger.Api
             services.AddHealthChecks()
                 .AddSqlServer(configuration.GetConnectionString("DefaultConnection")!, name: "SQL Server")
                 .AddRedis(configuration.GetConnectionString("Redis")!, name: "StackExchange Redis")
-                .AddRabbitMQ(rabbitConnectionString: $"amqp://{configuration["RabbitMQ:Username"]}:{configuration["RabbitMQ:Password"]}@{configuration["RabbitMQ:Host"]}:5672", name: "RabbitMQ Mensageria");
+                .AddRabbitMQ(
+    rabbitConnectionString: $"amqp://{configuration["RabbitMQ:Username"]}:{configuration["RabbitMQ:Password"]}@{configuration["RabbitMQ:Host"]}:5672",
+    name: "RabbitMQ Mensageria");
 
             return services;
         }
